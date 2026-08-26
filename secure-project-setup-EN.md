@@ -68,8 +68,11 @@ myproject/
 ├── .envcheck.toml            # configuration for the checker
 ├── .gitignore
 ├── .pre-commit-config.yaml
+├── .python-version           # interpreter pinned for uv
 ├── Makefile                  # make test | make run
 ├── README.md
+├── pyproject.toml            # Python dependencies, managed with uv
+├── uv.lock                   # locked versions, committed
 ├── src/
 │   ├── R/
 │   │   ├── config.R          # single place where the environment is read
@@ -603,12 +606,17 @@ def test_age_at_admission_is_derived(patients):
     assert ((ages >= 0) & (ages <= 120)).all()
 ```
 
-`pytest` is not part of a stock Python installation, and neither is `pandas`. Both are a
-prerequisite for `make test` on any machine where the suite is run:
+`pytest` and `pandas` are declared in `pyproject.toml` and locked in `uv.lock`, so preparing
+a machine to run the suite is one command:
 
 ```bash
-pip install --user pytest pandas
+uv sync
 ```
+
+That creates `.venv/` with the pinned interpreter and the locked versions. `make test` then
+runs the Python half through `uv run --frozen`, which fails loudly if `pyproject.toml` and
+`uv.lock` have drifted apart rather than quietly resolving something newer. Commit `uv.lock`
+and `.python-version`; `.venv/` is ignored.
 
 ---
 
@@ -622,17 +630,19 @@ pip install --user pytest pandas
 
 # Fixtures only. VAULT_ROOT is cleared explicitly, so this stays safe on the
 # execution environment too -- without it, `make test` there would silently run
-# against real data.
+# against real data. The Python half runs through uv against uv.lock, so the
+# suite does not depend on whatever happens to be installed.
 test:
 	VAULT_ROOT= Rscript -e 'testthat::test_dir("tests/testthat")'
-	VAULT_ROOT= python3 -m pytest -q
+	VAULT_ROOT= uv run --frozen pytest -q
 
 # Real data. Execution environment only, in a session with no assistant.
 run:
 	Rscript scripts/main.R
 
 # Static checks. Runs on every machine: the vault comparison skips itself when
-# VAULT_ROOT is unset.
+# VAULT_ROOT is unset. Plain python3 rather than uv, deliberately: the checker is
+# dependency-free by design and has to run without a virtualenv.
 check:
 	python3 tools/check_env_paths.py --check-unused
 	bash tools/check_vault_keys.sh

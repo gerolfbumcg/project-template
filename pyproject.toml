@@ -1,0 +1,29 @@
+# Python dependencies, managed with uv.
+#
+# `make test` runs through `uv run --frozen`, so the suite always executes
+# against uv.lock rather than whatever happens to be installed. `make check`
+# deliberately does NOT go through uv: the checker is dependency-free by design
+# and must keep running on a bare system python, which is also what exercises
+# its fallback TOML parser.
+
+[project]
+name = "project-template"
+version = "0.1.0"
+description = "Data-isolation project skeleton for R and Python analyses."
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+# Not an installable package: src/python holds plain modules, and tests reach
+# them through the sys.path entry in tests/conftest.py.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -18,5 +18,6 @@ make test     # both suites, against fixtures
 make run      # real data; execution environment only, in a session with no assistant
 ```
 
-`make test` needs `pytest` and `pandas` (`pip install --user pytest pandas`) and the R
-package `testthat`.
+Python dependencies are managed with [uv](https://docs.astral.sh/uv/): run `uv sync` once to
+create `.venv/` from `uv.lock`. `make test` also needs the R package `testthat`. `make check`
+deliberately runs on a bare system `python3` and needs nothing installed.
