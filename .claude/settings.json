@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.Renviron)",
+      "Read(./data/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(~/.ssh/**)",
+      "Bash(make run)",
+      "Bash(ssh *)",
+      "Bash(scp *)"
+    ],
+    "allow": [
+      "Bash(make test)",
+      "Bash(make check)",
+      "Bash(git status)",
+      "Bash(git diff *)"
+    ],
+    "ask": [
+      "Bash(git push *)"
+    ]
+  }
+}

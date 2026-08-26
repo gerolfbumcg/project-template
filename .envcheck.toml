@@ -1,0 +1,55 @@
+# .envcheck.toml -- configuration for tools/check_env_paths.py
+#
+# Everything is optional; anything you leave out falls back to the defaults in
+# the script. This section may also live in pyproject.toml under [tool.envcheck].
+
+[tool.envcheck]
+
+# File documenting the environment variables the project expects.
+env_example = ".env.example"
+
+# Variables that are always acceptable, even if absent from .env.example.
+# VAULT_ROOT belongs here rather than in .env.example: it is a property of the
+# machine, not of the project, and it is what locates secrets.env in the first
+# place. Keeping it out means .env.example and secrets.env hold the same keys.
+env_vars_optional = [
+    "VAULT_ROOT",
+    "HOME", "USER", "USERNAME", "PATH", "TMPDIR", "TEMP", "LANG",
+    "R_HOME", "R_LIBS_USER", "RETICULATE_PYTHON", "CI", "PYTEST_CURRENT_TEST",
+]
+
+# Path literals that may legitimately be absolute. Regex, matched on the string
+# itself. Keep this list short: every entry is an exception to the principle.
+allow_path_regex = [
+    "^/$",
+    "^/dev/null$",
+    "^/api/",        # URL paths, not filesystem paths
+    "^/v\\d+/",
+]
+
+# Directories that are never scanned.
+ignore_dirs = [
+    ".git", ".venv", "venv", "env", "__pycache__", ".pytest_cache", ".mypy_cache",
+    "node_modules", "renv", "packrat", ".Rproj.user", "_freeze", ".quarto",
+    "site-packages", ".ipynb_checkpoints", "build", "dist",
+]
+
+# Paths (relative to the project root) for which the checks are skipped.
+ignore_paths = [
+    # "vendor/third-party-code",
+]
+
+extensions = [".py", ".ipynb", ".R", ".r", ".Rmd", ".rmd", ".qmd"]
+
+# Project functions that read an environment variable by name, so that
+# required("DB_HOST") counts as usage of DB_HOST. These match the helper in
+# config.R / config.py; rename them here if you rename the helper.
+# The script's own default is empty on purpose: "required" is a common name and
+# should not be treated as an accessor unless a project says so.
+env_getters = ["required", "_required"]
+
+# Files that simply should not exist in the repository (FILE001).
+forbidden_files = [
+    ".env", ".env.local", ".Renviron", ".RData", ".Rhistory",
+    "credentials.json", "secrets.yaml", "secrets.yml", "id_rsa", "id_ed25519",
+]

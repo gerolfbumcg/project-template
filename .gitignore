@@ -1,0 +1,45 @@
+# --- secrets and environment ---
+.env
+.env.*
+!.env.example
+.Renviron
+*.pem
+*.key
+*.p12
+
+# --- data ---
+data/
+*.csv
+*.xlsx
+*.parquet
+*.rds
+*.sav
+*.dta
+!tests/fixtures/*.csv          # fixtures are fake and may be committed
+
+# --- R session residue ---
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj.user
+
+# --- rendered output (contains executed results!) ---
+_freeze/
+.quarto/
+*_files/
+*.html
+*_cache/
+
+# --- Python ---
+__pycache__/
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# --- output and scratch ---
+tmp/
+output/
+
+# --- other ---
+renv/library/
+.DS_Store

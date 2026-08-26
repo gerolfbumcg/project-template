@@ -1,0 +1,71 @@
+# .pre-commit-config.yaml
+#
+# Install:
+#   pipx install pre-commit          (or: pip install --user pre-commit)
+#   pre-commit install
+#   pre-commit autoupdate            <-- DO THIS FIRST, the revs below go stale
+#   pre-commit run --all-files       <-- initial pass over the whole repository
+#
+# These hooks run locally on your laptop. Run the same checks in CI as well,
+# because `git commit --no-verify` bypasses every pre-commit hook.
+
+repos:
+  # ------------------------------------------------------------------
+  # Local check: absolute paths, environment usage, hard-coded credentials
+  # ------------------------------------------------------------------
+  # One hook, scanning the whole project. Splitting this into a fast per-file
+  # hook plus a project-wide one duplicates every ENV001 finding, and the full
+  # scan takes milliseconds on a project of this size. Revisit only if it
+  # becomes slow.
+  - repo: local
+    hooks:
+      - id: envcheck
+        name: envcheck (paths, environment usage, forbidden files)
+        entry: python3 tools/check_env_paths.py --check-unused
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # ------------------------------------------------------------------
+  # Secret scanning
+  # ------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2          # let `pre-commit autoupdate` bump this
+    hooks:
+      - id: gitleaks
+
+  # ------------------------------------------------------------------
+  # Strip notebook output before it is committed
+  # ------------------------------------------------------------------
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+        files: '\.ipynb$'
+
+  # ------------------------------------------------------------------
+  # General hygiene
+  # ------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key          # SSH/PGP private keys
+      - id: check-added-large-files     # catches data dumps
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+
+# ----------------------------------------------------------------------
+# Optional, if you use Quarto/knitr: block rendered output.
+# Add under `repos: - repo: local`:
+#
+#      - id: no-rendered-output
+#        name: rendered output must not be committed
+#        entry: bash -c 'echo "Rendered output contains real results. Unstage it."; exit 1'
+#        language: system
+#        files: '(^|/)(_freeze/|.*_files/|.*\.html$)'
+#        pass_filenames: false
+# ----------------------------------------------------------------------

@@ -1,0 +1,9 @@
+patients:
+  n_rows: 25
+  columns:
+    - {name: patient_id,     type: character, pattern: "P[0-9]{6}"}
+    - {name: birth_year,     type: integer,   min: 1930, max: 2010}
+    - {name: sex,            type: factor,    levels: [A, B, C]}
+    - {name: region,         type: factor,    levels: [north, central, south]}
+    - {name: admission_date, type: date,      min: 2020-01-01, max: 2024-12-31}
+    - {name: score,          type: numeric,   min: 0, max: 100, na_share: 0.05}
