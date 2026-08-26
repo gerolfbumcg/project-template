@@ -15,9 +15,11 @@ Inspects Python and R source code for:
   FILE001 file that should never be in the repository (.env, .Renviron, ...)
 
 Deliberately dependency-free: standard library only, so the hook runs without a
-virtualenv and without an R installation.
+virtualenv and without an R installation. On Python < 3.11, where tomllib does
+not exist, the [tool.envcheck] section is read by a small built-in parser rather
+than ignored -- see _mini_toml_load.
 
-Exit codes: 0 = clean, 1 = findings, 2 = usage error.
+Exit codes: 0 = clean, 1 = findings, 2 = usage or configuration error.
 
 To silence a single line, append `# envcheck: ignore` to it (works in both
 Python and R, since both use #).
@@ -92,6 +94,187 @@ class Config:
         return [re.compile(p) for p in self.data["allow_path_regex"]]
 
 
+class ConfigError(Exception):
+    """The configuration file exists but cannot be read."""
+
+
+# --------------------------------------------------------------------------
+# Minimal TOML reader, for Python < 3.11
+# --------------------------------------------------------------------------
+#
+# tomllib arrived in 3.11, and the stock macOS python3 is older. Falling back to
+# the built-in defaults there is worse than it sounds: it discards env_getters
+# and env_vars_optional, so every documented key turns into a false ENV002 and
+# VAULT_ROOT into a false ENV001 -- the checker reports four problems that do not
+# exist, which is precisely how a check stops being believed.
+#
+# So parse the subset a [tool.envcheck] section actually uses: strings, integers,
+# booleans, and arrays of those, over one or more lines. Anything else *inside
+# that section* is an error rather than a shrug. Other tables are skipped
+# unparsed, so a pyproject.toml full of unrelated sections still works.
+
+_TOML_TARGETS = ("tool.envcheck", "envcheck")
+_TOML_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", '"': '"', "\\": "\\"}
+
+
+def _toml_strip_comment(line: str) -> str:
+    """Removes a trailing # comment, ignoring # inside strings."""
+    out: list[str] = []
+    quote, esc = "", False
+    for ch in line:
+        if quote:
+            out.append(ch)
+            if esc:
+                esc = False
+            elif ch == "\\" and quote == '"':
+                esc = True
+            elif ch == quote:
+                quote = ""
+            continue
+        if ch == "#":
+            break
+        if ch in "\"'":
+            quote = ch
+        out.append(ch)
+    return "".join(out)
+
+
+def _toml_depth(text: str) -> int:
+    """Net [ ] nesting of a line, ignoring brackets inside strings."""
+    depth, quote, esc = 0, "", False
+    for ch in text:
+        if quote:
+            if esc:
+                esc = False
+            elif ch == "\\" and quote == '"':
+                esc = True
+            elif ch == quote:
+                quote = ""
+            continue
+        if ch in "\"'":
+            quote = ch
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+    return depth
+
+
+def _toml_split(text: str) -> list[str]:
+    """Splits array elements on commas that are not inside a string or a nested array."""
+    parts: list[str] = []
+    cur: list[str] = []
+    quote, esc, depth = "", False, 0
+    for ch in text:
+        if quote:
+            cur.append(ch)
+            if esc:
+                esc = False
+            elif ch == "\\" and quote == '"':
+                esc = True
+            elif ch == quote:
+                quote = ""
+            continue
+        if ch in "\"'":
+            quote = ch
+            cur.append(ch)
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+            continue
+        cur.append(ch)
+    parts.append("".join(cur))
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _toml_scalar(raw: str, where: str):
+    if len(raw) >= 2 and raw[0] == raw[-1] == '"':
+        body, out, i = raw[1:-1], [], 0
+        while i < len(body):
+            if body[i] == "\\" and i + 1 < len(body):
+                nxt = body[i + 1]
+                if nxt not in _TOML_ESCAPES:
+                    raise ConfigError(f"{where}: unsupported escape '\\{nxt}'")
+                out.append(_TOML_ESCAPES[nxt])
+                i += 2
+                continue
+            out.append(body[i])
+            i += 1
+        return "".join(out)
+    if len(raw) >= 2 and raw[0] == raw[-1] == "'":
+        return raw[1:-1]          # literal string: no escape processing
+    if raw in ("true", "false"):
+        return raw == "true"
+    try:
+        return int(raw)
+    except ValueError:
+        raise ConfigError(f"{where}: cannot read value {raw!r}") from None
+
+
+def _toml_value(raw: str, where: str):
+    if raw.startswith("["):
+        if not raw.endswith("]"):
+            raise ConfigError(f"{where}: unterminated array")
+        return [_toml_scalar(p, where) for p in _toml_split(raw[1:-1])]
+    if raw.startswith("{"):
+        raise ConfigError(f"{where}: inline tables are not supported")
+    return _toml_scalar(raw, where)
+
+
+def _mini_toml_load(text: str, where: str) -> dict:
+    """Returns the [tool.envcheck] (or [envcheck]) table. Raises ConfigError."""
+    section: dict = {}
+    current, inside = "", False
+    pending_key = ""
+    pending: list[str] = []
+    depth = 0
+
+    for lineno, raw_line in enumerate(text.splitlines(), start=1):
+        line = _toml_strip_comment(raw_line).strip()
+        if not line:
+            continue
+        loc = f"{where}:{lineno}"
+
+        if depth > 0:                          # inside a multi-line array
+            pending.append(line)
+            depth += _toml_depth(line)
+            if depth <= 0:
+                if inside:
+                    section[pending_key] = _toml_value(" ".join(pending), loc)
+                pending_key, pending, depth = "", [], 0
+            continue
+
+        if line.startswith("[") and line.endswith("]") and "=" not in line:
+            if line.startswith("[["):
+                raise ConfigError(f"{loc}: arrays of tables are not supported")
+            current = line[1:-1].strip().strip("\"'")
+            inside = current in _TOML_TARGETS
+            continue
+
+        if "=" not in line:
+            if inside:
+                raise ConfigError(f"{loc}: cannot read line {line!r}")
+            continue                           # some other table's business
+
+        key, _, val = line.partition("=")
+        key, val = key.strip(), val.strip()
+        opened = _toml_depth(val)
+        if opened > 0:
+            pending_key, pending, depth = key, [val], opened
+            continue
+        if inside:
+            section[key] = _toml_value(val, loc)
+
+    if depth > 0:
+        raise ConfigError(f"{where}: unterminated array in [{current}]")
+    return section
+
+
 def load_config(root: Path, explicit: Path | None) -> Config:
     """Reads [tool.envcheck] from .envcheck.toml or pyproject.toml."""
     cfg = dict(DEFAULT_CONFIG)
@@ -99,13 +282,15 @@ def load_config(root: Path, explicit: Path | None) -> Config:
     for path in candidates:
         if path is None or not path.is_file():
             continue
-        if tomllib is None:
-            print(f"envcheck: tomllib unavailable (Python < 3.11), ignoring {path.name}",
-                  file=sys.stderr)
-            break
-        with path.open("rb") as fh:
-            doc = tomllib.load(fh)
-        section = doc.get("tool", {}).get("envcheck", doc.get("envcheck", {}))
+        if tomllib is not None:
+            try:
+                with path.open("rb") as fh:
+                    doc = tomllib.load(fh)
+            except tomllib.TOMLDecodeError as exc:
+                raise ConfigError(f"{path.name}: {exc}") from None
+            section = doc.get("tool", {}).get("envcheck", doc.get("envcheck", {}))
+        else:
+            section = _mini_toml_load(path.read_text(encoding="utf-8-sig"), path.name)
         if section:
             cfg.update(section)
         break
@@ -664,7 +849,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"envcheck: project root does not exist: {root}", file=sys.stderr)
         return 2
 
-    cfg = load_config(root, args.config)
+    try:
+        cfg = load_config(root, args.config)
+    except ConfigError as exc:
+        print(f"envcheck: {exc}", file=sys.stderr)
+        print("envcheck: refusing to run with defaults -- a configuration that does "
+              "not load produces findings that are not real.", file=sys.stderr)
+        return 2
+
     env_keys, findings = parse_env_example(root / cfg["env_example"])
 
     if args.paths:

@@ -15,7 +15,9 @@ data/
 *.rds
 *.sav
 *.dta
-!tests/fixtures/*.csv          # fixtures are fake and may be committed
+# fixtures are fake and may be committed; gitignore has no inline comments, so
+# this exception must sit on a line of its own or it silently matches nothing
+!tests/fixtures/*.csv
 
 # --- R session residue ---
 .Rhistory
