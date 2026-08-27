@@ -25,6 +25,16 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+  # ----------------------------------------------------------------------
+  # Optional, if you use Quarto/knitr: block rendered output.
+  # Add under `repos: - repo: local`:
+      - id: no-rendered-output
+        name: rendered output must not be committed
+        entry: bash -c 'echo "Rendered output contains real results. Unstage it."; exit 1'
+        language: system
+        files: '(^|/)(_freeze/|.*_files/|.*\.html$)'
+        pass_filenames: false
+  # ----------------------------------------------------------------------
 
   # ------------------------------------------------------------------
   # Secret scanning
@@ -58,14 +68,3 @@ repos:
       - id: check-yaml
       - id: check-toml
 
-# ----------------------------------------------------------------------
-# Optional, if you use Quarto/knitr: block rendered output.
-# Add under `repos: - repo: local`:
-#
-#      - id: no-rendered-output
-#        name: rendered output must not be committed
-#        entry: bash -c 'echo "Rendered output contains real results. Unstage it."; exit 1'
-#        language: system
-#        files: '(^|/)(_freeze/|.*_files/|.*\.html$)'
-#        pass_filenames: false
-# ----------------------------------------------------------------------
