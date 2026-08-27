@@ -1,4 +1,10 @@
 # Makefile
+#
+# The static checks live in mk/guard.mk, which is the file tools/adopt.sh copies
+# into an adopting project. Keeping them there rather than inline means this
+# template runs exactly the recipes it hands out, so the two cannot drift apart.
+include mk/guard.mk
+
 .PHONY: test run check
 
 # Fixtures only. VAULT_ROOT is cleared explicitly, so this stays safe on the
@@ -13,9 +19,7 @@ test:
 run:
 	Rscript scripts/main.R
 
-# Static checks. Runs on every machine: the vault comparison skips itself when
-# VAULT_ROOT is unset. Plain python3 rather than uv, deliberately: the checker is
-# dependency-free by design and has to run without a virtualenv.
-check:
-	python3 tools/check_env_paths.py --check-unused
-	bash tools/check_vault_keys.sh
+# Runs on every machine: the vault comparison skips itself when VAULT_ROOT is
+# unset. An adopting project makes its own check target depend on these two
+# instead of redefining them.
+check: check-env check-vault

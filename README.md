@@ -18,6 +18,10 @@ make test     # both suites, against fixtures
 make run      # real data; execution environment only, in a session with no assistant
 ```
 
+Applying this setup to a project that already exists is a separate job: see
+[docs/adopting-existing-project.md](docs/adopting-existing-project.md), and
+`tools/adopt.sh` to install the machinery without overwriting anything.
+
 Python dependencies are managed with [uv](https://docs.astral.sh/uv/): run `uv sync` once to
 create `.venv/` from `uv.lock`. `make test` also needs the R package `testthat`. `make check`
 deliberately runs on a bare system `python3` and needs nothing installed.
