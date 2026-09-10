@@ -69,10 +69,16 @@ myproject/
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── .python-version           # interpreter pinned for uv
-├── Makefile                  # make test | make run
+├── Makefile                  # make test | make run | make check
 ├── README.md
 ├── pyproject.toml            # Python dependencies, managed with uv
 ├── uv.lock                   # locked versions, committed
+├── secure-project-setup-EN.md
+├── secure-project-setup-NL.md
+├── docs/
+│   └── claude-code-brief.md  # the standing brief for the assistant
+├── mk/
+│   └── guard.mk              # check-env and check-vault, as an include
 ├── src/
 │   ├── R/
 │   │   ├── config.R          # single place where the environment is read
@@ -87,8 +93,7 @@ myproject/
 │   ├── test_processing.py
 │   ├── fixtures/             # fake data, committed to git
 │   │   ├── schema.yaml
-│   │   ├── patients.csv
-│   │   └── measurements.csv
+│   │   └── patients.csv
 │   └── testthat/
 │       ├── helper-src.R      # sources src/R, which is not a package
 │       └── test-processing.R
@@ -99,6 +104,12 @@ myproject/
     ├── check_vault_keys.sh   # .env.example vs the vault, skips without a vault
     └── generate_fixtures.R   # builds tests/fixtures/ from schema.yaml
 ```
+
+The template repository carries four files on top of this, which a project made from it does
+not keep: `tools/adopt.sh`, `tools/new-project.sh`, `tools/adopt-existing.sh` and
+`tools/runbook.sh`, together with the two documents in `docs/` that describe them. They exist
+to put this skeleton into a project; once that is done they have no further use, and
+`new-project.sh` deletes them as one of its steps.
 
 Note what is missing: there is no `data/` directory in the repository. Deliberately. The
 moment one exists, something real eventually lands in it.
@@ -133,6 +144,11 @@ rules are what make it testable, which is the same boundary seen from the other 
 ---
 
 ## 4. Setting it up, step by step
+
+This section builds the arrangement from an empty directory, so that every piece is
+introduced with the reason it exists. In practice you will not type it out: the skeleton is a
+repository, and `docs/starting-a-new-project.md` is the short mechanical route. Read this
+section for the reasoning; follow that one to actually begin.
 
 ### 4.1 Create the repository on the laptop
 
@@ -626,6 +642,11 @@ and `.python-version`; `.venv/` is ignored.
 
 ```makefile
 # Makefile
+#
+# The static checks live in mk/guard.mk, so this file and the fragment an
+# adopting project includes cannot drift apart.
+include mk/guard.mk
+
 .PHONY: test run check
 
 # Fixtures only. VAULT_ROOT is cleared explicitly, so this stays safe on the
@@ -640,13 +661,17 @@ test:
 run:
 	Rscript scripts/main.R
 
-# Static checks. Runs on every machine: the vault comparison skips itself when
-# VAULT_ROOT is unset. Plain python3 rather than uv, deliberately: the checker is
-# dependency-free by design and has to run without a virtualenv.
-check:
-	python3 tools/check_env_paths.py --check-unused
-	bash tools/check_vault_keys.sh
+# Runs on every machine: the vault comparison skips itself when VAULT_ROOT is
+# unset. An adopting project makes its own check target depend on these two
+# instead of redefining them.
+check: check-env check-vault
 ```
+
+`check-env` and `check-vault` are defined in `mk/guard.mk`, not here. That fragment is what
+`tools/adopt.sh` copies into a project that adopts this setup: the target names are
+namespaced because make silently replaces a redefined target, so shipping a `Makefile` with
+a plain `check` would delete the adopting project's own. Section 4.6 covers the checker
+those two targets run.
 
 `make run` picks up the values from `~/.Renviron` on Workbench. You deliberately keep this
 command out of the assistant's allow list.

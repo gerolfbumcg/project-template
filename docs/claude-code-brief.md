@@ -83,8 +83,6 @@ Delete or extend this list as work progresses.
 - [ ] `tests/fixtures/schema.yaml` says `n_rows: 25`, but `tools/generate_fixtures.R` emits
       28 because it appends three edge cases afterwards. Decide which number the schema
       describes.
-- [ ] The tree in section 3 of the guide lists `tests/fixtures/measurements.csv`, which
-      neither `schema.yaml` nor the generator produces.
 
 ## How I want to work
 

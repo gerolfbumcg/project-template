@@ -9,6 +9,17 @@ unrelated histories drags the template's example code into the project and produ
 conflicts on files that should never have met. Treat the template as a kit instead:
 install the machinery, leave the project's own identity alone.
 
+`tools/adopt-existing.sh` is this document, executed one confirmed command at a time. It
+prints each command before running it and does nothing without a yes, so you can follow
+along, skip a step, or stop anywhere. Read the sequence first without running any of it:
+
+```bash
+RUNBOOK_DRY_RUN=1 tools/adopt-existing.sh ../existing-project
+```
+
+Everything below is what that script does, in the same order. `tools/adopt.sh` is the copying
+step it calls; the rest of this document is everything around it.
+
 ## The template is two things
 
 | Machinery — travels to every project | Illustration — stays here |

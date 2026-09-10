@@ -72,10 +72,16 @@ myproject/
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── .python-version           # interpreter pinned for uv
-├── Makefile                  # make test | make run
+├── Makefile                  # make test | make run | make check
 ├── README.md
 ├── pyproject.toml            # Python dependencies, managed with uv
 ├── uv.lock                   # locked versions, committed
+├── secure-project-setup-EN.md
+├── secure-project-setup-NL.md
+├── docs/
+│   └── claude-code-brief.md  # the standing brief for the assistant
+├── mk/
+│   └── guard.mk              # check-env and check-vault, as an include
 ├── src/
 │   ├── R/
 │   │   ├── config.R          # single place where the environment is read
@@ -90,8 +96,7 @@ myproject/
 │   ├── test_processing.py
 │   ├── fixtures/             # fake data, committed to git
 │   │   ├── schema.yaml
-│   │   ├── patients.csv
-│   │   └── measurements.csv
+│   │   └── patients.csv
 │   └── testthat/
 │       ├── helper-src.R      # sources src/R, which is not a package
 │       └── test-processing.R
@@ -102,6 +107,12 @@ myproject/
     ├── check_vault_keys.sh   # .env.example vs the vault, skips without a vault
     └── generate_fixtures.R   # builds tests/fixtures/ from schema.yaml
 ```
+
+De template-repository draagt hier nog vier bestanden bovenop, die een project dat eruit
+voortkomt niet houdt: `tools/adopt.sh`, `tools/new-project.sh`, `tools/adopt-existing.sh` en
+`tools/runbook.sh`, samen met de twee documenten in `docs/` die ze beschrijven. Ze bestaan om
+dit skelet in een project te zetten; zodra dat gebeurd is hebben ze geen functie meer, en
+`new-project.sh` verwijdert ze als een van zijn stappen.
 
 Wat opvalt: er is geen `data/` map in de repo. Bewust. Zodra die er is, belandt er ooit
 iets echts in.
@@ -137,6 +148,11 @@ regels maken het testbaar, en dat is dezelfde grens vanaf de andere kant bekeken
 ---
 
 ## 4. Stap voor stap opzetten
+
+Deze sectie bouwt de opzet vanaf een lege map, zodat elk onderdeel wordt geïntroduceerd met
+de reden dat het er is. In de praktijk typ je dit niet over: het skelet is een repository, en
+`docs/starting-a-new-project.md` is de korte mechanische route. Lees deze sectie voor de
+redenering; volg die andere om daadwerkelijk te beginnen.
 
 ### 4.1 Repo aanmaken op de laptop
 
@@ -631,6 +647,11 @@ Commit `uv.lock` en `.python-version`; `.venv/` is genegeerd.
 
 ```makefile
 # Makefile
+#
+# The static checks live in mk/guard.mk, so this file and the fragment an
+# adopting project includes cannot drift apart.
+include mk/guard.mk
+
 .PHONY: test run check
 
 # Fixtures only. VAULT_ROOT is cleared explicitly, so this stays safe on the
@@ -645,13 +666,17 @@ test:
 run:
 	Rscript scripts/main.R
 
-# Static checks. Runs on every machine: the vault comparison skips itself when
-# VAULT_ROOT is unset. Plain python3 rather than uv, deliberately: the checker is
-# dependency-free by design and has to run without a virtualenv.
-check:
-	python3 tools/check_env_paths.py --check-unused
-	bash tools/check_vault_keys.sh
+# Runs on every machine: the vault comparison skips itself when VAULT_ROOT is
+# unset. An adopting project makes its own check target depend on these two
+# instead of redefining them.
+check: check-env check-vault
 ```
+
+`check-env` en `check-vault` staan in `mk/guard.mk`, niet hier. Dat fragment is wat
+`tools/adopt.sh` kopieert naar een project dat deze opzet overneemt: de targetnamen zijn
+genamespaced omdat make een opnieuw gedefinieerd target stil vervangt, dus een `Makefile`
+met een kale `check` zou de eigen check van dat project wissen. Sectie 4.6 behandelt de
+checker die deze twee targets draaien.
 
 `make run` gebruikt de waarden uit `~/.Renviron` op Workbench. Je zet dit commando bewust
 niet in de allow-lijst van de assistent.

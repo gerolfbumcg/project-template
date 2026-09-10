@@ -18,9 +18,17 @@ make test     # both suites, against fixtures
 make run      # real data; execution environment only, in a session with no assistant
 ```
 
-Applying this setup to a project that already exists is a separate job: see
-[docs/adopting-existing-project.md](docs/adopting-existing-project.md), and
-`tools/adopt.sh` to install the machinery without overwriting anything.
+```bash
+tools/new-project.sh                        # start a new project from this skeleton
+tools/adopt-existing.sh ../other-project    # apply it to a project that already exists
+```
+
+Both scripts print every command before running it and do nothing without a yes; prefix
+either with `RUNBOOK_DRY_RUN=1` to read the whole sequence first. They automate
+[docs/starting-a-new-project.md](docs/starting-a-new-project.md) and
+[docs/adopting-existing-project.md](docs/adopting-existing-project.md), which explain the
+same steps for doing it by hand. `tools/adopt.sh` is the copying step on its own: it installs
+the machinery into an existing project without overwriting anything.
 
 Python dependencies are managed with [uv](https://docs.astral.sh/uv/): run `uv sync` once to
 create `.venv/` from `uv.lock`. `make test` also needs the R package `testthat`. `make check`
