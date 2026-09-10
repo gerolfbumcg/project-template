@@ -157,12 +157,20 @@ A project that does not use make can read mk/guard.mk as the two commands to run
 and wire them into tox, just, npm scripts or CI directly.
 
 One change is not optional: the existing test target must clear VAULT_ROOT.
+Keep whatever command this project already runs, and put the prefix in front of
+it:
 
     test:
-    	VAULT_ROOT= pytest -q
+    	VAULT_ROOT= <the project's own test command>
 
-Without it, running the tests on the execution environment silently runs them
-against real data."
+A bare 'pytest' only resolves when a virtualenv is already active. This
+template's own Makefile manages Python with uv, so there it reads:
+
+    test:
+    	VAULT_ROOT= uv run --frozen pytest -q
+
+Without the prefix, running the tests on the execution environment silently
+runs them against real data."
 
 if command -v pre-commit >/dev/null 2>&1 || [ "$RUNBOOK_DRY_RUN" = "1" ]; then
     run_step "Install the git hook" pre-commit install

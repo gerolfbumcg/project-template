@@ -142,15 +142,17 @@ The template's own Makefile includes the same fragment rather than repeating the
 what it hands out is what it runs.
 
 One change to the project's existing test target is not optional: it must clear
-`VAULT_ROOT`, as the template's does.
+`VAULT_ROOT`, as the template's does. Keep whatever command the project already runs and put
+the prefix in front of it — a bare `pytest` only resolves when a virtualenv is already
+active, which is why the template's own Makefile, managing Python with uv, reads:
 
 ```make
 test:
-	VAULT_ROOT= pytest -q
+	VAULT_ROOT= uv run --frozen pytest -q
 ```
 
-Without that, running the tests on the execution environment silently runs them against real
-data.
+Without the prefix, running the tests on the execution environment silently runs them against
+real data.
 
 Finally, install the hooks and run the same checks in CI — `git commit --no-verify` bypasses
 every pre-commit hook, so a local-only gate is not a gate.
