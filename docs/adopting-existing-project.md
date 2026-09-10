@@ -154,6 +154,17 @@ test:
 Without the prefix, running the tests on the execution environment silently runs them against
 real data.
 
+The uv line above is what *this* template runs, not a command to copy. It applies to an
+adopting project only if that project also manages Python with uv and declares `pytest`
+itself — neither `pyproject.toml` nor `uv.lock` travels from here, so `uv run --frozen
+pytest` in a project without them fails with `Failed to spawn: pytest`. A project with a
+plain virtualenv uses `.venv/bin/pytest`; an R project uses its
+`Rscript -e 'testthat::test_dir("tests/testthat")'` line; a project with no test suite yet
+has nothing to prefix until it has one.
+
+The prefix is the requirement. The command it goes in front of is whatever that project
+already runs.
+
 Finally, install the hooks and run the same checks in CI — `git commit --no-verify` bypasses
 every pre-commit hook, so a local-only gate is not a gate.
 

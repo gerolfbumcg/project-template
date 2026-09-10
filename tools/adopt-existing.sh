@@ -170,7 +170,13 @@ template's own Makefile manages Python with uv, so there it reads:
     	VAULT_ROOT= uv run --frozen pytest -q
 
 Without the prefix, running the tests on the execution environment silently
-runs them against real data."
+runs them against real data.
+
+The uv line is what this template runs, not a command to copy. It applies here
+only if this project also manages Python with uv and declares pytest itself --
+neither pyproject.toml nor uv.lock travels from the template. A plain
+virtualenv uses .venv/bin/pytest; an R project uses its testthat line; a
+project with no test suite yet has nothing to prefix until it has one."
 
 if command -v pre-commit >/dev/null 2>&1 || [ "$RUNBOOK_DRY_RUN" = "1" ]; then
     run_step "Install the git hook" pre-commit install
