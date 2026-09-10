@@ -175,8 +175,16 @@ runs them against real data.
 The uv line is what this template runs, not a command to copy. It applies here
 only if this project also manages Python with uv and declares pytest itself --
 neither pyproject.toml nor uv.lock travels from the template. A plain
-virtualenv uses .venv/bin/pytest; an R project uses its testthat line; a
-project with no test suite yet has nothing to prefix until it has one."
+virtualenv uses .venv/bin/pytest; a project with no test suite yet has nothing
+to prefix until it has one.
+
+An R project needs one thing more. R reads ~/.Renviron at startup and a plain
+name=value line there overrides what the shell set -- which on the execution
+environment is exactly where VAULT_ROOT lives, so the prefix alone is silently
+undone. Unset it again after startup:
+
+    test:
+    	VAULT_ROOT= Rscript -e 'Sys.unsetenv("VAULT_ROOT"); testthat::test_dir("tests/testthat")'"
 
 if command -v pre-commit >/dev/null 2>&1 || [ "$RUNBOOK_DRY_RUN" = "1" ]; then
     run_step "Install the git hook" pre-commit install

@@ -158,9 +158,18 @@ The uv line above is what *this* template runs, not a command to copy. It applie
 adopting project only if that project also manages Python with uv and declares `pytest`
 itself — neither `pyproject.toml` nor `uv.lock` travels from here, so `uv run --frozen
 pytest` in a project without them fails with `Failed to spawn: pytest`. A project with a
-plain virtualenv uses `.venv/bin/pytest`; an R project uses its
-`Rscript -e 'testthat::test_dir("tests/testthat")'` line; a project with no test suite yet
-has nothing to prefix until it has one.
+plain virtualenv uses `.venv/bin/pytest`; a project with no test suite yet has nothing to
+prefix until it has one.
+
+An R project needs one thing more than the prefix. R reads `~/.Renviron` at startup and a
+plain `name=value` line there overrides what the shell set — which on the execution
+environment is exactly where `VAULT_ROOT` lives, so the prefix alone is silently undone.
+Unset it again after startup:
+
+```make
+test:
+	VAULT_ROOT= Rscript -e 'Sys.unsetenv("VAULT_ROOT"); testthat::test_dir("tests/testthat")'
+```
 
 The prefix is the requirement. The command it goes in front of is whatever that project
 already runs.

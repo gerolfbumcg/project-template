@@ -659,7 +659,7 @@ include mk/guard.mk
 # against real data. The Python half runs through uv against uv.lock, so the
 # suite does not depend on whatever happens to be installed.
 test:
-	VAULT_ROOT= Rscript -e 'testthat::test_dir("tests/testthat")'
+	VAULT_ROOT= Rscript -e 'Sys.unsetenv("VAULT_ROOT"); testthat::test_dir("tests/testthat")'
 	VAULT_ROOT= uv run --frozen pytest -q
 
 # Real data. Execution environment only, in a session with no assistant.
@@ -684,6 +684,13 @@ niet in de allow-lijst van de assistent.
 Het leegmaken van `VAULT_ROOT` in het `test`-target is geen versiering. Op de uitvoeromgeving
 ís die variabele gezet, dus zonder dat zou `make test` daar stilletjes de testsuite tegen
 productiedata draaien — en de output in de vault wegschrijven.
+
+Voor R is de shell-prefix alleen niet genoeg. R leest bij het opstarten `~/.Renviron`, en een
+gewone `naam=waarde`-regel daar overschrijft wat de shell had gezet — en `~/.Renviron` is
+precies waar `VAULT_ROOT` op de uitvoeromgeving staat. `Sys.unsetenv()` draait ná het
+opstarten en wist hem alsnog. `--no-environ` zou ook werken, maar gooit het hele bestand weg,
+inclusief `R_LIBS_USER`, en dat is op Workbench juist waar `testthat` vandaan komt. Python
+leest geen `.Renviron`, dus daar volstaat de prefix.
 
 ### 7.2 De console is de lekkende kant
 

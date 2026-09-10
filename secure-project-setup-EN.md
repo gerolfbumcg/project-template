@@ -654,7 +654,7 @@ include mk/guard.mk
 # against real data. The Python half runs through uv against uv.lock, so the
 # suite does not depend on whatever happens to be installed.
 test:
-	VAULT_ROOT= Rscript -e 'testthat::test_dir("tests/testthat")'
+	VAULT_ROOT= Rscript -e 'Sys.unsetenv("VAULT_ROOT"); testthat::test_dir("tests/testthat")'
 	VAULT_ROOT= uv run --frozen pytest -q
 
 # Real data. Execution environment only, in a session with no assistant.
@@ -679,6 +679,13 @@ command out of the assistant's allow list.
 Clearing `VAULT_ROOT` in the `test` target is not decoration. On the execution environment
 that variable *is* set, so without it `make test` would quietly run the test suite against
 production data — and write its output into the vault.
+
+The shell prefix alone does not hold for R. R reads `~/.Renviron` at startup, and a plain
+`name=value` line there overrides what the shell set — and `~/.Renviron` is exactly where
+`VAULT_ROOT` lives on the execution environment. `Sys.unsetenv()` runs after startup and
+clears it for real. `--no-environ` would also work but discards the whole file, including
+`R_LIBS_USER`, which on Workbench is where `testthat` comes from. Python does not read
+`.Renviron`, so there the prefix is enough.
 
 ### 7.2 The console is the leaking side
 
